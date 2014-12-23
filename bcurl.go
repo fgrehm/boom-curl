@@ -13,7 +13,6 @@
 // limitations under the License.
 
 // -H     -> http headers (array)
-// --data ->
 // --compressed
 
 package main
@@ -93,15 +92,18 @@ func boom(c *cli.Context) {
 	// cpus = flag.Int("cpus", runtime.GOMAXPROCS(-1), "")
 	cpus := runtime.GOMAXPROCS(-1)
 	// n    = flag.Int("n", 200, "")
-	num := 200
+	num := 1000
 	// c    = flag.Int("c", 50, "")
-	conc := 5
+	conc := 4
 	// q    = flag.Int("q", 0, "")
 	q := 0
 	// t    = flag.Int("t", 0, "")
 	t := 0
 	// contentType = flag.String("T", "text/html", "")
 	contentType := "text/html"
+	if m == "POST" {
+		contentType = "application/x-www-form-urlencoded"
+	}
 	// output = flag.String("o", "", "") -> Might have to change to something else
 	output := ""
 	// insecure           = flag.Bool("allow-insecure", false, "")
@@ -162,8 +164,6 @@ func boom(c *cli.Context) {
 		headerAndValue := strings.SplitAfterN(h, ":", 2)
 		h := strings.TrimSuffix(headerAndValue[0], ":")
 		value := strings.Trim(strings.Trim(headerAndValue[1], " "), "\"")
-
-		fmt.Printf("%+v, %+v\n", h, value)
 
 		header.Set(h, value)
 	}
