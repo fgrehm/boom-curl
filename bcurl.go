@@ -18,7 +18,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -33,10 +32,6 @@ import (
 const (
 	headerRegexp = "^([\\w-]+):\\s*(.+)"
 	authRegexp   = "^([\\w-\\.]+):(.+)"
-)
-
-var (
-	// headers     = flag.String("h", "", "")
 )
 
 func main() {
@@ -59,42 +54,66 @@ GLOBAL OPTIONS:
 	app.Usage = "A cURL like interface for Boom, an HTTP(S) load generator, ApacheBench (ab) replacement"
 	app.Author = "Fábio Rehm"
 	app.Email = "fgrehm@gmail.com"
-	app.Version = "0.1.0"
-	app.Flags = []cli.Flag {
+	app.Version = VERSION
+	app.EnableBashCompletion = true
+	app.Flags = []cli.Flag{
 		cli.StringSliceFlag{
-			Name: "H, header",
+			Name:  "H, header",
 			Value: &cli.StringSlice{},
 			Usage: "custom header to pass to server",
 		},
 		cli.StringFlag{
-			Name: "d, data",
+			Name:  "d, data",
 			Value: "",
 			Usage: "HTTP POST data",
 		},
+		cli.IntFlag{
+			Name:  "cpus",
+			Value: runtime.NumCPU(),
+			Usage: fmt.Sprintf("Number of used cpu cores. (default for current machine is %d cores)", runtime.NumCPU()),
+		},
+		cli.IntFlag{
+			Name:  "requests",
+			Value: 200,
+			Usage: "Number of requests to run",
+		},
+		cli.IntFlag{
+			Name:  "concurrency",
+			Value: 50,
+			Usage: "Number of requests to run concurrently.",
+		},
 	}
 	app.Action = func(c *cli.Context) {
+		if len(c.Args()) != 1 {
+			usageAndExit(c, "")
+		}
+
 		boom(c)
 	}
 
+	// cURL accepts the URL as the first argument but the cli package we are
+	// using will blow up since it will recognize it as a subcommand that does
+	// not exist, that's why we need to move things around
+	if len(os.Args) > 2 && !strings.HasPrefix(os.Args[1], "-") {
+		argsWithoutUrl := append([]string{os.Args[0]}, os.Args[2:]...)
+		os.Args = append(argsWithoutUrl, os.Args[1])
+	}
 	app.Run(os.Args)
 }
 
 func boom(c *cli.Context) {
-	// body        = flag.String("d", "", "")
 	body := c.String("data")
-	// m           = flag.String("m", "GET", "")
 	var m string
 	if body != "" {
 		m = "POST"
 	} else {
 		m = "GET"
 	}
-	// cpus = flag.Int("cpus", runtime.GOMAXPROCS(-1), "")
-	cpus := runtime.GOMAXPROCS(-1)
-	// n    = flag.Int("n", 200, "")
-	num := 1000
-	// c    = flag.Int("c", 50, "")
-	conc := 4
+	cpus := c.Int("cpus")
+	num := c.Int("requests")
+	conc := c.Int("concurrency")
+
+	// TODO: Should we accept the stuff below as parameters as well?
 	// q    = flag.Int("q", 0, "")
 	q := 0
 	// t    = flag.Int("t", 0, "")
@@ -104,9 +123,7 @@ func boom(c *cli.Context) {
 	if m == "POST" {
 		contentType = "application/x-www-form-urlencoded"
 	}
-	// output = flag.String("o", "", "") -> Might have to change to something else
 	output := ""
-	// insecure           = flag.Bool("allow-insecure", false, "")
 	insecure := false
 	// disableCompression = flag.Bool("disable-compression", false, "")
 	// disableCompression := false
@@ -115,17 +132,10 @@ func boom(c *cli.Context) {
 	// proxyAddr          = flag.String("x", "", "")
 	// proxyAddr := ""
 	// authHeader  = flag.String("a", "", "")
-	authHeader := ""
 	// accept      = flag.String("A", "", "")
-	accept := ""
 
-
-	// REAL CODE BELOW
+	// MAGIC HAPPENS BELOW
 	runtime.GOMAXPROCS(cpus)
-
-	if len(c.Args()) != 1 {
-		usageAndExit(c, "")
-	}
 
 	if num <= 0 || conc <= 0 {
 		usageAndExit(c, "n and c cannot be smaller than 1.")
@@ -142,6 +152,11 @@ func boom(c *cli.Context) {
 	method = strings.ToUpper(m)
 	url = c.Args()[0]
 
+	// Prepend http protocol if user did not provide it
+	if !regexp.MustCompile(`^https?://`).MatchString(url) {
+		url = "http://" + url
+	}
+
 	// set any other additional headers
 	// if *headers != "" {
 	// 	headers := strings.Split(*headers, ";")
@@ -154,11 +169,12 @@ func boom(c *cli.Context) {
 	// 	}
 	// }
 
-	if accept != "" {
-		header.Set("Accept", accept)
-	}
+	//if accept != "" {
+	//	header.Set("Accept", accept)
+	//}
 
 	// set content-type
+	header.Set("User-Agent", "boom-curl/"+VERSION)
 	header.Set("Content-Type", contentType)
 	for _, h := range c.StringSlice("H") {
 		headerAndValue := strings.SplitAfterN(h, ":", 2)
@@ -169,13 +185,13 @@ func boom(c *cli.Context) {
 	}
 
 	// set basic auth if set
-	if authHeader != "" {
-		match, err := parseInputWithRegexp(authHeader, authRegexp)
-		if err != nil {
-			usageAndExit(c, err.Error())
-		}
-		username, password = match[1], match[2]
-	}
+	//if authHeader != "" {
+	//	match, err := parseInputWithRegexp(authHeader, authRegexp)
+	//	if err != nil {
+	//		usageAndExit(c, err.Error())
+	//	}
+	//	username, password = match[1], match[2]
+	//}
 
 	if output != "csv" && output != "" {
 		usageAndExit(c, "Invalid output type.")
@@ -221,11 +237,11 @@ func usageAndExit(c *cli.Context, message string) {
 	os.Exit(1)
 }
 
-func parseInputWithRegexp(input, regx string) (matches []string, err error) {
-	re := regexp.MustCompile(regx)
-	matches = re.FindStringSubmatch(input)
-	if len(matches) < 1 {
-		err = errors.New("Could not parse provided input")
-	}
-	return
-}
+//func parseInputWithRegexp(input, regx string) (matches []string, err error) {
+//	re := regexp.MustCompile(regx)
+//	matches = re.FindStringSubmatch(input)
+//	if len(matches) < 1 {
+//		err = errors.New("Could not parse provided input")
+//	}
+//	return
+//}
