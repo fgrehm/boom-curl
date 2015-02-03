@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// -H     -> http headers (array)
-// --compressed
-
 package main
 
 import (
@@ -113,26 +110,14 @@ func boom(c *cli.Context) {
 	num := c.Int("requests")
 	conc := c.Int("concurrency")
 
-	// TODO: Should we accept the stuff below as parameters as well?
-	// q    = flag.Int("q", 0, "")
 	q := 0
-	// t    = flag.Int("t", 0, "")
 	t := 0
-	// contentType = flag.String("T", "text/html", "")
 	contentType := "text/html"
 	if m == "POST" {
 		contentType = "application/x-www-form-urlencoded"
 	}
 	output := ""
 	insecure := false
-	// disableCompression = flag.Bool("disable-compression", false, "")
-	// disableCompression := false
-	// disableKeepAlives  = flag.Bool("disable-keepalive", false, "")
-	// disableKeepAlives := false
-	// proxyAddr          = flag.String("x", "", "")
-	// proxyAddr := ""
-	// authHeader  = flag.String("a", "", "")
-	// accept      = flag.String("A", "", "")
 
 	// MAGIC HAPPENS BELOW
 	runtime.GOMAXPROCS(cpus)
@@ -143,9 +128,6 @@ func boom(c *cli.Context) {
 
 	var (
 		url, method string
-		// Username and password for basic auth
-		username, password string
-		// request headers
 		header http.Header = make(http.Header)
 	)
 
@@ -156,22 +138,6 @@ func boom(c *cli.Context) {
 	if !regexp.MustCompile(`^https?://`).MatchString(url) {
 		url = "http://" + url
 	}
-
-	// set any other additional headers
-	// if *headers != "" {
-	// 	headers := strings.Split(*headers, ";")
-	// 	for _, h := range headers {
-	// 		match, err := parseInputWithRegexp(h, headerRegexp)
-	// 		if err != nil {
-	// 			usageAndExit(err.Error())
-	// 		}
-	// 		header.Set(match[1], match[2])
-	// 	}
-	// }
-
-	//if accept != "" {
-	//	header.Set("Accept", accept)
-	//}
 
 	// set content-type
 	header.Set("User-Agent", "boom-curl/"+VERSION)
@@ -184,46 +150,23 @@ func boom(c *cli.Context) {
 		header.Set(h, value)
 	}
 
-	// set basic auth if set
-	//if authHeader != "" {
-	//	match, err := parseInputWithRegexp(authHeader, authRegexp)
-	//	if err != nil {
-	//		usageAndExit(c, err.Error())
-	//	}
-	//	username, password = match[1], match[2]
-	//}
-
 	if output != "csv" && output != "" {
 		usageAndExit(c, "Invalid output type.")
 	}
 
-	// var proxyURL *gourl.URL
-	// if proxyAddr != "" {
-	// 	var err error
-	// 	proxyURL, err = gourl.Parse(proxyAddr)
-	// 	if err != nil {
-	// 		usageAndExit(c, err.Error())
-	// 	}
-	// }
-
 	(&boomer.Boomer{
 		Req: &boomer.ReqOpts{
-			Method:   method,
-			URL:      url,
-			Body:     body,
-			Header:   header,
-			Username: username,
-			Password: password,
+			Method: method,
+			URL:    url,
+			Body:   body,
+			Header: header,
 		},
 		N:             num,
 		C:             conc,
 		Qps:           q,
 		Timeout:       t,
 		AllowInsecure: insecure,
-		// DisableCompression: disableCompression,
-		// DisableKeepAlives:  disableKeepAlives,
-		// ProxyAddr:          proxyURL,
-		Output: output,
+		Output:        output,
 	}).Run()
 }
 
@@ -235,12 +178,3 @@ func usageAndExit(c *cli.Context, message string) {
 	cli.ShowAppHelp(c)
 	os.Exit(1)
 }
-
-//func parseInputWithRegexp(input, regx string) (matches []string, err error) {
-//	re := regexp.MustCompile(regx)
-//	matches = re.FindStringSubmatch(input)
-//	if len(matches) < 1 {
-//		err = errors.New("Could not parse provided input")
-//	}
-//	return
-//}
