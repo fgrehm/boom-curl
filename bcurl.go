@@ -142,7 +142,7 @@ func boom(c *cli.Context) {
 	}
 
 	var (
-		url, method, originalHost string
+		url, method string
 		// Username and password for basic auth
 		username, password string
 		// request headers
@@ -208,23 +208,22 @@ func boom(c *cli.Context) {
 
 	(&boomer.Boomer{
 		Req: &boomer.ReqOpts{
-			Method:       method,
-			Url:          url,
-			Body:         body,
-			Header:       header,
-			Username:     username,
-			Password:     password,
-			OriginalHost: originalHost,
+			Method:   method,
+			URL:      url,
+			Body:     body,
+			Header:   header,
+			Username: username,
+			Password: password,
 		},
-		N:                  num,
-		C:                  conc,
-		Qps:                q,
-		Timeout:            t,
-		AllowInsecure:      insecure,
+		N:             num,
+		C:             conc,
+		Qps:           q,
+		Timeout:       t,
+		AllowInsecure: insecure,
 		// DisableCompression: disableCompression,
 		// DisableKeepAlives:  disableKeepAlives,
 		// ProxyAddr:          proxyURL,
-		Output:             output,
+		Output: output,
 	}).Run()
 }
 

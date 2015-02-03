@@ -16,7 +16,9 @@
 package boomer
 
 import (
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -32,23 +34,17 @@ type result struct {
 
 type ReqOpts struct {
 	Method   string
-	Url      string
+	URL      string
 	Header   http.Header
 	Body     string
 	Username string
 	Password string
-	// Request host is an resolved IP. TLS/SSL handshakes may require
-	// the original server name, keep it to initate the TLS client.
-	OriginalHost string
 }
 
 // Creates a req object from req options
 func (r *ReqOpts) Request() *http.Request {
-	req, _ := http.NewRequest(r.Method, r.Url, strings.NewReader(r.Body))
+	req, _ := http.NewRequest(r.Method, r.URL, strings.NewReader(r.Body))
 	req.Header = r.Header
-
-	// update the Host value in the Request - this is used as the host header in any subsequent request
-	req.Host = r.OriginalHost
 
 	if r.Username != "" && r.Password != "" {
 		req.SetBasicAuth(r.Username, r.Password)
@@ -57,27 +53,41 @@ func (r *ReqOpts) Request() *http.Request {
 }
 
 type Boomer struct {
-	// Request to make.
+	// Req represents the options of the request to be made.
+	// TODO(jbd): Make it work with an http.Request instead.
 	Req *ReqOpts
-	// Total number of requests to make.
+
+	// N is the total number of requests to make.
 	N int
-	// Concurrency level, the number of concurrent workers to run.
+
+	// C is the concurrency level, the number of concurrent workers to run.
 	C int
+
 	// Timeout in seconds.
 	Timeout int
-	// Rate limit.
+
+	// Qps is the rate limit.
 	Qps int
-	// Option to allow insecure TLS/SSL certificates.
+
+	// AllowInsecure is an option to allow insecure TLS/SSL certificates.
 	AllowInsecure bool
 
-	// Output type
+	// DisableCompression is an option to disable compression in response
+	DisableCompression bool
+
+	// DisableKeepAlives is an option to prevents re-use of TCP connections between different HTTP requests
+	DisableKeepAlives bool
+
+	// Output represents the output type. If "csv" is provided, the
+	// output will be dumped as a csv stream.
 	Output string
 
-	// Optional address of HTTP proxy server as host:port
-	ProxyAddr string
+	// ProxyAddr is the address of HTTP proxy server in the format on "host:port".
+	// Optional.
+	ProxyAddr *url.URL
 
+	dial    func(network, address string) (net.Conn, error)
 	bar     *pb.ProgressBar
-	rpt     *report
 	results chan *result
 }
 
