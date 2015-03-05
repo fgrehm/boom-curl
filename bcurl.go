@@ -76,7 +76,7 @@ GLOBAL OPTIONS:
 		},
 		cli.IntFlag{
 			Name:  "concurrency",
-			Value: 50,
+			Value: 4,
 			Usage: "Number of requests to run concurrently.",
 		},
 	}
