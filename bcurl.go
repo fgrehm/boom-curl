@@ -79,6 +79,10 @@ GLOBAL OPTIONS:
 			Value: 4,
 			Usage: "Number of requests to run concurrently.",
 		},
+		cli.BoolFlag{
+			Name:  "compressed",
+			Usage: "Enable compression",
+		},
 	}
 	app.Action = func(c *cli.Context) {
 		if len(c.Args()) != 1 {
@@ -112,6 +116,7 @@ func boom(c *cli.Context) {
 
 	q := 0
 	t := 0
+	disableCompression := true
 	contentType := "text/html"
 	if m == "POST" {
 		contentType = "application/x-www-form-urlencoded"
@@ -128,7 +133,7 @@ func boom(c *cli.Context) {
 
 	var (
 		url, method string
-		header http.Header = make(http.Header)
+		header      http.Header = make(http.Header)
 	)
 
 	method = strings.ToUpper(m)
@@ -154,6 +159,10 @@ func boom(c *cli.Context) {
 		usageAndExit(c, "Invalid output type.")
 	}
 
+	if c.BoolT("compressed") {
+		disableCompression = false
+	}
+
 	(&boomer.Boomer{
 		Req: &boomer.ReqOpts{
 			Method: method,
@@ -161,12 +170,13 @@ func boom(c *cli.Context) {
 			Body:   body,
 			Header: header,
 		},
-		N:             num,
-		C:             conc,
-		Qps:           q,
-		Timeout:       t,
-		AllowInsecure: insecure,
-		Output:        output,
+		N:                  num,
+		C:                  conc,
+		Qps:                q,
+		Timeout:            t,
+		AllowInsecure:      insecure,
+		Output:             output,
+		DisableCompression: disableCompression,
 	}).Run()
 }
 
